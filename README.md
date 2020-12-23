@@ -11,4 +11,5 @@ Proof generator using Haskell
 3. *Disjunction* (OR): v (lower-case letter 'v')
 4. *Conditional* (IMPL, IF): -> 
 5. *Equality*: = , *Inequalty* (XOR): !=
+
 (Hint: the Operators are evaluated in that order. !A ^ B v C -> D = E != F is the same as ((!A) ^ (B v (C -> (D = E != F)))) 
