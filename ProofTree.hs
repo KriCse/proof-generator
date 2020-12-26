@@ -15,8 +15,6 @@ printRule rule se  = show se ++ "(" ++ rule ++ ")"
 type AlphaExpression = SignedExpression
 type BetaExpression = SignedExpression
 type SignedAtomicExpression = SignedExpression
-type Equality = SignedExpression
-type Inequalty = SignedExpression
 
 data UnexpandedExpressions = UnexpandedExpressions {alphaRules :: [AlphaExpression],
                                                      betaRules :: [BetaExpression]} deriving (Eq)
@@ -28,9 +26,7 @@ instance Show UnexpandedExpressions where
      alphaPrinter = printRule "alpha"
      betaPrinter = printRule "beta"
 
-data ExpandedExpressions = ExpandedExpressions {atomicFormulas :: [SignedAtomicExpression],
-                                                equalies :: [Equality],
-                                                inequalties :: [Inequalty]} deriving (Eq)
+data ExpandedExpressions = ExpandedExpressions {atomicFormulas :: [SignedAtomicExpression]} deriving (Eq)
 instance Show ExpandedExpressions where
   show ExpandedExpressions {atomicFormulas = [] } = "{}"
   show ExpandedExpressions {atomicFormulas = af } = "{" ++ intercalate ", " [show x | x <- af] ++ "}"
@@ -40,9 +36,11 @@ instance Show ExpressionSet where
   show (ExpressionSet ue ee True) = "To be Expanded: " ++ show ue ++ ". Expanded: " ++ show ee ++ " (closed)"
   show (ExpressionSet ue ee False) = "To be Expanded: " ++ show ue ++ ". Expanded: " ++ show ee
 
-data Rule = Alpha | Beta | Atom | Equality | Inequalty deriving (Show, Eq)
+data Rule = Alpha | Beta | Atom  deriving (Show, Eq)
 
 getRule :: SignedExpression -> Rule
+getRule (SignedExpression _ (BinaryExpression Equality _ _)) = Beta
+getRule (SignedExpression _ (BinaryExpression Inequalty _ _)) = Beta
 getRule (SignedExpression True (BinaryExpression Conjuction _ _)) = Alpha
 getRule (SignedExpression False (BinaryExpression Conjuction _ _)) = Beta
 getRule (SignedExpression True (BinaryExpression Disjunction _ _)) = Beta
@@ -85,7 +83,14 @@ applyBetaRule ee (SignedExpression _ (BinaryExpression Disjunction left right))
 applyBetaRule ee (SignedExpression _ (BinaryExpression Conditional left right))
   =  (addToExpressionSet ee (SignedExpression False left),
       addToExpressionSet ee (SignedExpression True right))
-
+applyBetaRule ee (SignedExpression b (BinaryExpression Inequalty left right))
+  = applyBetaRule ee (SignedExpression (not b) (BinaryExpression Equality left right))
+applyBetaRule ee (SignedExpression True (BinaryExpression Equality left right))
+  = (addToExpressionSet (addToExpressionSet ee (SignedExpression False left)) (SignedExpression False right),
+      addToExpressionSet (addToExpressionSet ee (SignedExpression True left)) (SignedExpression True right))
+applyBetaRule ee (SignedExpression False (BinaryExpression Equality left right))
+  = (addToExpressionSet (addToExpressionSet ee (SignedExpression False left)) (SignedExpression True right),
+      addToExpressionSet (addToExpressionSet ee (SignedExpression True left)) (SignedExpression False right))
 
 containsConjucate :: SignedAtomicExpression -> [SignedAtomicExpression] -> Bool
 containsConjucate _ [] = False
@@ -126,7 +131,7 @@ removeBetaRule (ExpressionSet ue@UnexpandedExpressions{betaRules = (x:xs)} ee c)
 expand :: SignedExpression -> Node
 expand se = expand' (addToExpressionSet (ExpressionSet
   UnexpandedExpressions{alphaRules = [], betaRules = []}
-  ExpandedExpressions {atomicFormulas = [], equalies = [], inequalties = []}
+  ExpandedExpressions {atomicFormulas = []}
   False) se)
 
 
