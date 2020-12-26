@@ -1,17 +1,34 @@
 module PParser where
 
-import PLexer
+import PLexer (Token(..), TokenSequence, VariableName)
 
 data BinaryOperator = Conjuction
                     | Disjunction
                     | Conditional
                     | Equality
-                    | Inequalty deriving (Show, Eq)
-data UnaryOperator = Negation deriving (Show, Eq)
+                    | Inequalty deriving (Eq)
+
+instance Show BinaryOperator where
+  show Conjuction = "^"
+  show Disjunction = "v"
+  show Conditional = "->"
+  show Equality = "="
+  show Inequalty = "!="
+
+
+data UnaryOperator = Negation deriving (Eq)
+instance Show UnaryOperator where
+  show Negation = "!"
 
 data Expression  = AtomicFormula VariableName |
                   BinaryExpression BinaryOperator Expression Expression |
-                  UnaryExpression UnaryOperator Expression deriving (Show, Eq)
+                  UnaryExpression UnaryOperator Expression deriving (Eq)
+
+instance Show Expression where
+  show (AtomicFormula name) = name
+  show (BinaryExpression o l r) = show l ++ show o ++ show r
+  show (UnaryExpression o e) = show o ++ show e
+
 type PartialParseResult = (TokenSequence, Expression)
 type Parser = TokenSequence -> PartialParseResult
 
@@ -66,7 +83,7 @@ parseBinaryOperator' operatorToken binaryOperator nextParser (operator : ts)
     nextTs :: TokenSequence
     binaryOperator' :: BinaryOperator
     nextExpression :: Expression
-    (nextTs, binaryOperator', nextExpression) = parseBinaryOperator' operatorToken binaryOperator nextParser ts
+    (nextTs, binaryOperator', nextExpression) = parseBinaryOperator' operatorToken binaryOperator nextParser ts'
 
 parseBinaryOperator :: Token -> BinaryOperator -> Parser -> TokenSequence -> PartialParseResult
 parseBinaryOperator operatorToken binaryOperator nextParser ts
@@ -97,7 +114,7 @@ parseTerm (TNegation : xs) = let (ts, expression) = parseTerm xs in
                                   (ts, UnaryExpression Negation expression)
 parseTerm (TVariable name : xs) = (xs, AtomicFormula name)
 parseTerm (TOpenParenthesis : xs) = parseParenthesis xs
-parseTerm (x:_) = error ("Unexpected Token: " ++ show x) 
+parseTerm (x:_) = error ("Unexpected Token: " ++ show x)
 
 parseParenthesis :: Parser
 parseParenthesis ts@(x:xs)
